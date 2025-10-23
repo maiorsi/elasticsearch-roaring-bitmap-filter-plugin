@@ -1,0 +1,85 @@
+@host = localhost
+@port = 9200
+@scheme = http
+
+###
+# Create index with binary field for roaring bitmap
+curl -X PUT --header 'Content-Type: application/json' \
+    {{scheme}}://{{host}}:{{port}}/my-index -d'
+{
+  "mappings": {
+    "properties": {
+      "rb": {
+        "type": "binary",
+        "doc_values": true
+      }
+    }
+  }
+}'
+
+###
+# Insert document with roaring bitmap field
+# BitMap([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144])
+curl -X POST --header 'Content-Type: application/json' \
+    {{scheme}}://{{host}}:{{port}}/my-index/_doc \
+     -d '{"rb": "OjAAAAEAAAAAAAoAEAAAAAEAAgADAAUACAANABUAIgA3AFkAkAA="}'
+
+###
+# Retrieve all documents to verify insertion
+curl -X GET "{{scheme}}://{{host}}:{{port}}/my-index/_search"
+
+###
+# Retrieve index mappings to verify field type
+curl -X GET "{{scheme}}://{{host}}:{{port}}/my-index/_mappings"
+
+###
+# Search using roaring bitmap filter: find documents where rb contains all of [3, 5, 8]
+# Should return the document we just inserted
+curl -X POST "{{scheme}}://{{host}}:{{port}}/my-index/_search" -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "bool": {
+      "filter": {
+        "script": {
+          "script": {
+            "source": "roaring_bitmap_filter",
+            "lang": "roaring_bitmap",
+            "params": {
+              "field": "rb",
+              "operation": "@>",
+              "terms": "OjAAAAEAAAAAAAIAEAAAAAMABQAIAA=="
+            }
+          }
+        }
+      }
+    }
+  }
+}'
+
+###
+# Search using roaring bitmap filter: find documents where rb contains all of [1, 2, 3, 4, 5, 8]
+# Should NOT return any documents
+curl -X POST "{{scheme}}://{{host}}:{{port}}/my-index/_search" -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "bool": {
+      "filter": {
+        "script": {
+          "script": {
+            "source": "roaring_bitmap_filter",
+            "lang": "roaring_bitmap",
+            "params": {
+              "field": "rb",
+              "operation": "@>",
+              "terms": "OzAAAAEAAAUAAgABAAQACAAAAA=="
+            }
+          }
+        }
+      }
+    }
+  }
+}'
+
+###
+# Delete the index
+curl -XDELETE "{{scheme}}://{{host}}:{{port}}/my-index"
