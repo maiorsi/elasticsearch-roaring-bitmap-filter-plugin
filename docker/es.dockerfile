@@ -1,9 +1,9 @@
-FROM docker.elastic.co/elasticsearch/elasticsearch:9.1.1
+FROM docker.elastic.co/elasticsearch/elasticsearch:9.2.0
 
 # Copy plugin distribution into the image and install it.
-# Expects that `./gradlew :lib:distZip` has produced
-# lib/build/distributions/es-rb-plugin.zip on the host.
-ARG PLUGIN_ZIP=lib/build/distributions/es-rb-plugin.zip
+# Expects that `./gradlew :es:distZip` has produced
+# es/build/distributions/es-rb-plugin.zip on the host.
+ARG PLUGIN_ZIP=es/build/distributions/es-rb-plugin.zip
 
 COPY ${PLUGIN_ZIP} /tmp/es-rb-plugin.zip
 

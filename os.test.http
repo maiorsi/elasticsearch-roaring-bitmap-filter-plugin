@@ -1,0 +1,88 @@
+#############################################
+# OpenSearch (docker) — dev & secured examples
+# - dev (no security): plain HTTP on 9201 (use docker/opensearch.dev.yml)
+# - secured: HTTPS + basic auth (default image with security plugin)
+#############################################
+
+#### OpenSearch (docker) — dev (no security) — plain HTTP on 9201
+# If you mounted docker/opensearch.dev.yml (plugins.security.disabled: true)
+# the cluster will accept plain HTTP on the mapped port (default in compose: 9201).
+@os_host = localhost
+@os_port = 9201
+@os_scheme = http
+
+### Create index on OpenSearch dev container
+PUT {{os_scheme}}://{{os_host}}:{{os_port}}/my-index
+Content-Type: application/json
+
+{
+  "mappings": {
+    "properties": {
+      "rb": {
+        "type": "binary",
+        "doc_values": true
+      }
+    }
+  }
+}
+
+### Insert document with roaring bitmap field
+# BitMap([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144])
+POST {{os_scheme}}://{{os_host}}:{{os_port}}/my-index/_doc
+Content-Type: application/json
+
+{
+  "rb": "OjAAAAEAAAAAAAoAEAAAAAEAAgADAAUACAANABUAIgA3AFkAkAA="
+}
+
+### Retrieve all documents to verify insertion
+GET {{os_scheme}}://{{os_host}}:{{os_port}}/my-index/_search
+
+### Search OpenSearch (dev) with roaring bitmap filter: find documents where rb contains all of [3, 5, 8]
+POST {{os_scheme}}://{{os_host}}:{{os_port}}/my-index/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "filter": {
+        "script": {
+          "script": {
+            "source": "roaring_bitmap_filter",
+            "lang": "roaring_bitmap",
+            "params": {
+              "field": "rb",
+              "operation": "@>",
+              "terms": "OjAAAAEAAAAAAAIAEAAAAAMABQAIAA=="
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+### Search OpenSearch (dev) with roaring bitmap filter: find documents where rb contains all of [1, 2, 3, 4, 5, 8]
+# Should NOT return any documents
+POST {{os_scheme}}://{{os_host}}:{{os_port}}/my-index/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "filter": {
+        "script": {
+          "script": {
+            "source": "roaring_bitmap_filter",
+            "lang": "roaring_bitmap",
+            "params": {
+              "field": "rb",
+              "operation": "@>",
+              "terms": "OzAAAAEAAAUAAgABAAQACAAAAA=="
+            }
+          }
+        }
+      }
+    }
+  }
+}

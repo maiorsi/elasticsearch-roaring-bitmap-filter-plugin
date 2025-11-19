@@ -1,0 +1,11 @@
+cluster.name: os-docker-cluster
+node.name: os01
+network.host: 0.0.0.0
+discovery.type: single-node
+
+# For local development ONLY: disable the security plugin and HTTP TLS so plain HTTP works.
+plugins.security.disabled: true
+plugins.security.ssl.http.enabled: false
+
+# Keep minimal memory settings; the compose file already configures JVM opts.
+bootstrap.memory_lock: true

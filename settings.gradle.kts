@@ -17,5 +17,5 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-rootProject.name = "es-rb-plugin"
-include("lib")
+rootProject.name = "search-rb-plugin"
+include("es", "os")

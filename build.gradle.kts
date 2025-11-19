@@ -6,10 +6,10 @@ plugins {
 
 tasks.register<Exec>("dockerComposeUp") {
     group = "application"
-    description = "Builds the plugin (:lib:distZip) then runs docker compose up --build"
+    description = "Builds the plugin (:es:distZip) then runs docker compose up --build"
 
     // Ensure the plugin distribution is built first
-    dependsOn(":lib:distZip")
+    dependsOn(":es:distZip")
 
     // Command to run - runs docker compose from the repository root
     commandLine = listOf("docker", "compose", "up", "--build", "-d")

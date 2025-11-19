@@ -1,0 +1,89 @@
+#############################################
+# Elasticsearch (docker) — plain HTTP on 9200
+# Test the plugin on a standard Elasticsearch docker container
+#############################################
+@host = localhost
+@port = 9200
+@scheme = http
+
+### Create index with binary field for roaring bitmap
+PUT {{scheme}}://{{host}}:{{port}}/my-index
+Content-Type: application/json
+
+{
+  "mappings": {
+    "properties": {
+      "rb": {
+        "type": "binary",
+        "doc_values": true
+      }
+    }
+  }
+}
+
+### Insert document with roaring bitmap field
+# BitMap([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144])
+POST {{scheme}}://{{host}}:{{port}}/my-index/_doc
+Content-Type: application/json
+
+{
+  "rb": "OjAAAAEAAAAAAAoAEAAAAAEAAgADAAUACAANABUAIgA3AFkAkAA="
+}
+
+### Retrieve all documents to verify insertion
+GET {{scheme}}://{{host}}:{{port}}/my-index/_search
+
+### Retrieve index mappings to verify field type
+GET {{scheme}}://{{host}}:{{port}}/my-index/_mappings
+
+### Search using roaring bitmap filter: find documents where rb contains all of [3, 5, 8]
+POST {{scheme}}://{{host}}:{{port}}/my-index/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "filter": {
+        "script": {
+          "script": {
+            "source": "roaring_bitmap_filter",
+            "lang": "roaring_bitmap",
+            "params": {
+              "field": "rb",
+              "operation": "@>",
+              "terms": "OjAAAAEAAAAAAAIAEAAAAAMABQAIAA=="
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+### Search using roaring bitmap filter: find documents where rb contains all of [1, 2, 3, 4, 5, 8]
+# Should NOT return any documents
+POST {{scheme}}://{{host}}:{{port}}/my-index/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "filter": {
+        "script": {
+          "script": {
+            "source": "roaring_bitmap_filter",
+            "lang": "roaring_bitmap",
+            "params": {
+              "field": "rb",
+              "operation": "@>",
+              "terms": "OzAAAAEAAAUAAgABAAQACAAAAA=="
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+### Delete the index
+DELETE {{scheme}}://{{host}}:{{port}}/my-index
